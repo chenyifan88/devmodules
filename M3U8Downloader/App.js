@@ -17,7 +17,8 @@ import {
 import RNFS from 'react-native-fs'
 import M3U8Downloader from './M3U8Downloader'
 
-const m3u8Uri = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+// const m3u8Uri = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
+const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
 
 
 const AvailableTsDataInfoConstant = 'AvailableTsDataInfoConstant'
@@ -47,7 +48,7 @@ export default class App extends Component<Props> {
                         // this.document = await ExternalStorageDirectoryPath;
                         this.document = await RNFS.ExternalDirectoryPath;
                     }
-                    let filePath = this.document + "/TsData/Test.mp4";
+                    let filePath = this.document + "/TsData2/Test.mp4";
                     // this.downloadM3U8File(savePath,m3u8Uri2,3)
                     this.download = new M3U8Downloader();
                     let downloadConfig = {
@@ -55,19 +56,19 @@ export default class App extends Component<Props> {
                         m3u8Url: m3u8Uri,
                         segment: 3,
                         onStartReady: result => {
-                            console.warn(result)
+                            console.warn('onStartReady:'+result)
                         },
                         onStartDownload: result => {
-                            console.warn(result)
+                            console.warn('onStartDownload:'+result)
                         },
                         onEndDownload: result => {
-                            console.warn(result)
+                            console.warn('onEndDownload:'+result)
                         },
                         onError: result => {
-                            console.warn(result)
+                            console.warn('onError:'+result)
                         },
                         onProgress: result => {
-                            console.warn("downloadProgress:"+result)
+                            console.warn("onProgress:"+JSON.stringify(result))
                         },
                         resume:true,
                     }

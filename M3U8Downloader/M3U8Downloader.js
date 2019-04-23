@@ -28,7 +28,7 @@ export default class M3U8Downloader {
      *                          onEndDownload?:fun,
      *                          onError?:fun,
      *                          onProgress?:fun,
-     *                          resume?:bool,
+     *                          _resume?:bool,
      *
      *                        }
      */
@@ -37,7 +37,7 @@ export default class M3U8Downloader {
         let {m3u8Url,filePath,segment,onStartReady,onStartDownload,onEndDownload,onError,onProgress,resume} = downloadConfig;
         if(!m3u8Url){
             if(onError){
-              onError('m3u8Url is undefined')
+                onError('m3u8Url is undefined')
             }
             return;
         }
@@ -63,9 +63,7 @@ export default class M3U8Downloader {
             this._downloadConfig.resume(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
             return;
         }
-
         this._downloadConfig.downloadM3U8File(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
-        // this._downloadRecord.push(this._downloadConfig);
     }
 
     pause = ()=>{
