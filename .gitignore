@@ -24,16 +24,16 @@ project.xcworkspace
 
 # Android/IntelliJ
 #
-.idea
-.gradle
-local.properties
+*/.idea
+*/.gradle
+*/local.properties
 *.iml
 
 # node.js
 #
-node_modules/
-npm-debug.log
-yarn-error.log
+*/node_modules/
+*/npm-debug.log
+*/yarn-error.log
 
 # BUCK
 buck-out/
@@ -56,16 +56,16 @@ buck-out/
 
 .idea/
 .gradle/
-android/keystores/
-android/app/build/
-android/build.gradle
-android/.DS_Store
+*/android/keystores/
+*/android/app/build/
+*/android/build.gradle
+*/android/.DS_Store
 
 
 
-ios/Pods/
-ios/Podfile.lock
+*/ios/Pods/
+*/ios/Podfile.lock
 
-package-lock.json
-yarn.lock
-.vscode/
+*/package-lock.json
+*/yarn.lock
+*/.vscode/
