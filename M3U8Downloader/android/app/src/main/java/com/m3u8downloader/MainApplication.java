@@ -3,6 +3,7 @@ package com.m3u8downloader;
 import android.app.Application;
 
 import com.facebook.react.ReactApplication;
+import com.arthenica.reactnative.RNFFmpegPackage;
 import com.swmansion.gesturehandler.react.RNGestureHandlerPackage;
 import com.rnfs.RNFSPackage;
 import com.facebook.react.ReactNativeHost;
@@ -25,6 +26,7 @@ public class MainApplication extends Application implements ReactApplication {
     protected List<ReactPackage> getPackages() {
       return Arrays.<ReactPackage>asList(
           new MainReactPackage(),
+            new RNFFmpegPackage(),
             new RNGestureHandlerPackage(),
             new RNFSPackage()
       );

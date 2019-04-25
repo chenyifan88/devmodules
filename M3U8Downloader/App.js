@@ -19,7 +19,7 @@ import M3U8Downloader from './M3U8Downloader'
 
 // const m3u8Uri = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
 const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
-
+import {RNFFmpeg} from 'react-native-ffmpeg';
 
 const AvailableTsDataInfoConstant = 'AvailableTsDataInfoConstant'
 const test = 'AvailableUrlsConstant'
@@ -35,7 +35,18 @@ export default class App extends Component<Props> {
 
     }
 
+    setCustomFontDirectory(cache) {
+        console.log("Registering cache directory as font directory.");
+        // let cache = RNFS.CachesDirectoryPath;
+        console.warn("_______________"+cache);
+        RNFFmpeg.setFontDirectory(cache, {my_easy_font_name: "my complex font name", my_font_name_2: "my complex font name"});
+    }
 
+    setFontconfigConfguration(cache) {
+        console.log("Registering cache directory as fontconfig directory.");
+
+        RNFFmpeg.setFontconfigConfigurationPath(cache);
+    }
 
     render() {
         return (
@@ -43,12 +54,41 @@ export default class App extends Component<Props> {
                 <Button style={{flex: 1}} title={'parserM3u8'} onPress={async () => {
                     console.warn('parser')
                     if (Platform.OS === 'ios') {
-                        this.document = await RNFS.DocumentDirectoryPath;
+                        this.document =  RNFS.DocumentDirectoryPath;
                     } else {
                         // this.document = await ExternalStorageDirectoryPath;
-                        this.document = await RNFS.ExternalDirectoryPath;
+                        this.document =  RNFS.ExternalDirectoryPath;
                     }
-                    let filePath = this.document + "/TsData2/Test.mp4";
+                    console.warn(this.document)
+                    this.setFontconfigConfguration(this.document);
+                    this.setCustomFontDirectory(this.document);
+
+                    // // let filePath = this.document + "/TsData2/Test.mp4";
+                    let filePath = this.document + "/TsData2/test.mp4";
+                    let srtPath = this.document + '/TsData2/test.srt';
+                    let assPath = this.document + '/TsData2/test.ass';
+                    let m3u8FilePath = this.document + "/TsData/index.m3u8";
+                    let outputPath = this.document + "/TsData2/out.mp4";
+                    let outputPath2 = this.document + "/TsData2/index.mov";
+
+                    //-i input.mp4 -i subtitles.srt -c:s mov_text -c:v copy -c:a copy output.mp4
+                    // let command = `-i ${filePath} -i ${srtPath} -c:s mov_text -c:v copy -c:a copy test3.mp4`
+                    // let command = `-i ${srtPath} ${assPath}`
+                    let command = `-i ${filePath} -vf subtitles=${srtPath} ${outputPath}`
+                    // let command = `-i ${filePath} -vf ass=${assPath} ${outputPath2}`
+                    // let command = `-i ${filePath} -vcodec copy -acodec copy ${outputPath2}`;
+                    // let command = `-i ${m3u8FilePath} -vcodec copy -acodec copy ${outputPath}`;
+                    let result = await RNFS.exists(srtPath)
+                    if(result){
+                        RNFFmpeg.execute(command," ").then(res =>{
+                            console.warn(res)
+                        }).catch(error=>{
+                            console.warn(error)
+                        })
+                    }
+
+                    return;
+
                     // this.downloadM3U8File(savePath,m3u8Uri2,3)
                     this.download = new M3U8Downloader();
                     let downloadConfig = {

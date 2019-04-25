@@ -26,6 +26,8 @@ import {RNFFmpeg} from 'react-native-ffmpeg';
 // 对加密ts合成mp4
 // ffmpeg -allowed_extensions ALL -protocol_whitelist "file,http,crypto,tcp" -i index.m3u8 -c copy out.mp4
 
+// 字幕合成
+//-i my.mkv -vf subtitles=my.ass my2.mkv
 export default class M3U8DownloaderConfig {
 
     constructor() {
@@ -97,7 +99,6 @@ export default class M3U8DownloaderConfig {
             let curSegmentDownloadedCount = startIndex - segmentCount*(i-1);
             downloadedCount+=curSegmentDownloadedCount;
             this._setDownloadedCount(downloadedCount);
-            console.warn(downloadedCount)
             this._downloadTsFile(objData,startIndex,endIndex,i)
         }
     }
@@ -598,11 +599,12 @@ export default class M3U8DownloaderConfig {
 
             let nextIndex = startIndex + 1;
             // 结束递归
+            console.warn("startIndex:"+startIndex)
             if (nextIndex >= endIndex) {
                 let downloadedCount = this._getDownloadedSegment()+1;
                 this._setDownloadedSegment(downloadedCount);
                 let isDownloaded = this._isDownloaded();
-                console.warn('is____'+isDownloaded)
+                console.warn('isDownloaded:'+isDownloaded)
                 if(isDownloaded){
                     this._getOnEndDownload && this._getOnEndDownload()(true);
                     let savePath = this._getSavePath();
@@ -659,7 +661,8 @@ export default class M3U8DownloaderConfig {
     }
 
     _M3U8ToMP4 = (m3u8FilePath,outputPath)=>{
-        let command = `-i ${m3u8FilePath} -vcodec mpeg4 ${outputPath}`;
+        // let command = `-i ${m3u8FilePath} -vcodec mpeg4 ${outputPath}`;
+        let command = `-i ${m3u8FilePath} -vcodec copy -acodec copy ${outputPath}`;
         this._execute(command);
     }
 
