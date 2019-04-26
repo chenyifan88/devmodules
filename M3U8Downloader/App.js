@@ -11,8 +11,6 @@ import {
     Platform,
     Button,
     SafeAreaView,
-    AppState,
-    AsyncStorage,
 } from 'react-native';
 import RNFS from 'react-native-fs'
 import M3U8Downloader from './M3U8Downloader'
@@ -20,11 +18,8 @@ import M3U8Downloader from './M3U8Downloader'
 const m3u8Uri = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
 // const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
 // const m3u8Uri = 'http://play.tiansex.net:2095/avid57982102c3d5e/avid57982102c3d5e.m3u8?md5=15OPrZBvhAsGiNEfgRR5jw&expires=1556248514'
-import {RNFFmpeg} from 'react-native-ffmpeg';
-import FFmpeg from "./FFmpeg";
 
-const AvailableTsDataInfoConstant = 'AvailableTsDataInfoConstant'
-const test = 'AvailableUrlsConstant'
+import FFmpeg from "./FFmpeg";
 
 // 对加密ts合成mp4
 // ffmpeg -allowed_extensions ALL -protocol_whitelist "file,http,crypto,tcp" -i index.m3u8 -c copy out.mp4
@@ -36,20 +31,7 @@ export default class App extends Component<Props> {
         super(props);
 
     }
-
-    setCustomFontDirectory(cache) {
-        console.log("Registering cache directory as font directory.");
-        // let cache = RNFS.CachesDirectoryPath;
-        console.warn("_______________"+cache);
-        RNFFmpeg.setFontDirectory(cache, {my_easy_font_name: "my complex font name", my_font_name_2: "my complex font name"});
-    }
-
-    setFontconfigConfguration(cache) {
-        console.log("Registering cache directory as fontconfig directory.");
-
-        RNFFmpeg.setFontconfigConfigurationPath(cache);
-    }
-
+    
     render() {
         return (
             <SafeAreaView style={{flex: 1, backgroundColor: '#cc4'}}>
@@ -85,15 +67,15 @@ export default class App extends Component<Props> {
                     let result = await RNFS.exists(m3u8FilePath)
                     if(result){
 
-                        FFmpeg.encryptM3u8CompositeMP4(m3u8FilePath,outputPath,res=>{
-                            console.warn(res)
-                        })
-
-                        // let fontDir = this.document+"/fontFile";
-                        // let fontName = "Songti.ttc";
-                        // FFmpeg.textCompositeMP4(outputPath,"文字添加到视频上，坐标x=100,y=200",fontDir,fontName,"red",36,100,200,outputPath2,res=>{
+                        // FFmpeg.encryptM3u8CompositeMP4(m3u8FilePath,outputPath,res=>{
                         //     console.warn(res)
-                        // });
+                        // })
+
+                        let fontDir = this.document+"/fontFile";
+                        let fontName = "Songti.ttc";
+                        FFmpeg.textCompositeMP4(outputPath,"文字添加到视频上，坐标x=100,y=200",fontDir,fontName,"red",36,100,200,outputPath2,res=>{
+                            console.warn(res)
+                        });
 
                         // FFmpeg.m3u8ToMP4(m3u8FilePath,outputPath,result=>{
                         //     console.warn(result)
@@ -147,10 +129,6 @@ export default class App extends Component<Props> {
                     console.warn('parser')
                     this.download&&this.download.pause();
                 }}/>
-                {/*<Button style={{flex: 1}} title={'start'} onPress={async () => {*/}
-                    {/*console.warn('start')*/}
-                    {/*this.download&&this.download.start();*/}
-                {/*}}/>*/}
             </SafeAreaView>
         );
     }

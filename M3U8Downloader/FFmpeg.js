@@ -85,18 +85,8 @@ export default class FFmpeg {
      * @param y
      * @param mp4OutputPath
      */
-    static textCompositeMP4(mp4InputPath,text,fontDir,fontName,fontColor,fontSize,x,y,mp4OutputPath,callback){
-        //ffmpeg
-        // -i /Users/mac/Desktop/TsData2/test2.mp4
-        // -vf "drawtext=fontfile=/Users/mac/Desktop/TsData2/Songti.ttc
-        // :fontcolor=red
-        // :fontsize=36
-        // :y=h/2
-        // :text='Hello,i am a boys而发达舒服\n的啦看到副教授sdsaf"
-        // /Users/mac/Desktop/TsData2/out.mp4
-        let fontFile = fontDir+"/"+fontName;
-        // RNFFmpeg.setFontconfigConfigurationPath(fontDir);
-        // RNFFmpeg.setFontDirectory(fontDir, {my_easy_font_name: "my complex font name", my_font_name_2: "my complex font name"});
+    static textCompositeMP4(mp4InputPath,text,fontPath,fontColor,fontSize,x,y,mp4OutputPath,callback){
+        let fontFile = fontPath;
         let command = `-i ${mp4InputPath} -vf drawtext='fontfile=${fontFile}:fontcolor=${fontColor}:fontsize=${fontSize}:x=${x}:y=${y}:text=${text}' ${mp4OutputPath}`
         console.warn("command:_"+command);
         RNFFmpeg.execute(command," ").then(result=>{
