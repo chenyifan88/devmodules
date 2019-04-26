@@ -5,7 +5,6 @@
  * @format
  * @flow
  */
-
 import M3U8DownloaderConfig from "./M3U8DownloaderConfig";
 
 // 对加密ts合成mp4
@@ -28,13 +27,15 @@ export default class M3U8Downloader {
      *                          onEndDownload?:fun,
      *                          onError?:fun,
      *                          onProgress?:fun,
-     *                          _resume?:bool,
+     *                          resume?:bool,
      *
      *                        }
      */
 
     downloadM3U8File = downloadConfig =>{
+
         let {m3u8Url,filePath,segment,onStartReady,onStartDownload,onEndDownload,onError,onProgress,resume} = downloadConfig;
+
         if(!m3u8Url){
             if(onError){
                 onError('m3u8Url is undefined')
@@ -58,7 +59,10 @@ export default class M3U8Downloader {
         let fileName = filePath.substring(last+1,filePath.length);
         let split = fileName.split('.');
         fileName = split[0];
-        this._downloadConfig  = new M3U8DownloaderConfig();
+        this._savePath = savePath;
+        if(!this._downloadConfig){
+            this._downloadConfig  = new M3U8DownloaderConfig();
+        }
         if(typeof resume === 'boolean' && resume){
             this._downloadConfig.resume(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
             return;
@@ -70,11 +74,32 @@ export default class M3U8Downloader {
         this._downloadConfig.onPause();
     }
 
-    start = () =>{
-        this._downloadConfig.onStart();
+    // start = () =>{
+    //     this._downloadConfig.onStart();
+    // }
+    /**
+     * 取消下载
+     * @param callback
+     */
+    cancel = () =>{
+        if(this._savePath){
+            if(typeof callback === 'function'){
+                let result = this._downloadConfig.onCancel(this._savePath);
+                return result;
+            }else{
+                return false;
+            }
+
+        }
+
     }
 
-    clear = (filePath) =>{
+
+    _setBool = (start,pause,resume,cancel)=>{
+        this._onStart = start;
+        this._onPause = pause;
+        this._onResume = resume;
+        this._onCancel = cancel;
 
     }
 

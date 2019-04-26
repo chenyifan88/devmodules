@@ -20,8 +20,8 @@ import {
     writeFile,
     readFile,
     downloadFile,
+    unlink,
 } from 'react-native-fs';
-import {RNFFmpeg} from 'react-native-ffmpeg';
 
 // 对加密ts合成mp4
 // ffmpeg -allowed_extensions ALL -protocol_whitelist "file,http,crypto,tcp" -i index.m3u8 -c copy out.mp4
@@ -36,9 +36,11 @@ export default class M3U8DownloaderConfig {
         this._downloadedSegment = 0; // 完成几个分段下载
         // 注： 这里的下载是指下一个ts分片的下载
         this._onPause = false; // 暂停下载，暂停下载
-        this._onStart = false; // 开始下载，调用onPause后，可以在调用onStart开始下载
+        this._onStart = true; // 开始下载，调用onPause后，可以在调用onStart开始下载
         this._onResume = false; // 恢复下载，针对非人为中断下载
         this._onCancel =false; // 取消下载，会清空所有下载文件
+
+        this.timeout = 30000;
     }
 
     onPause = ()=>{
@@ -47,10 +49,13 @@ export default class M3U8DownloaderConfig {
         }
 
     }
-    onCancel = () =>{
+    onCancel = (savePath) =>{
         if(!this._onCancel){
-            this._setBool(false,false,false,true)
+            this._setBool(false,false,false,true);
+            unlink(savePath).then().catch();
+            return true;
         }
+        return false;
 
     }
     onStart =async () =>{
@@ -61,45 +66,62 @@ export default class M3U8DownloaderConfig {
     }
 
     resume = async (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress, onError) =>{
-        if(!this._onResume){
-            this._setBool(false,false,true,false)
+        try{
+            if(!this._onResume){
+                this._setBool(false,false,true,false)
 
-            let filePath = savePath+'/'+fileName+'.m3u8';
-            let isExist = await exists(filePath);
-            if(isExist){
-                this._init(savePath,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
-                // 恢复下载时，需要读取存储到本地的下载id
-                let downloadID = await readFile(this._getDownloadIdFilePath());
-                this._setCurrentDownloadId(downloadID)
-                this._continueDownload();
-            }else{
-                this.downloadM3U8File(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError)
+                let filePath = savePath+'/'+fileName+'.m3u8';
+                let isExist = await exists(filePath);
+                if(isExist){
+                    this._init(savePath,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
+                    // 恢复下载时，需要读取存储到本地的下载id
+                    let downloadID = await readFile(this._getDownloadIdFilePath());
+                    this._setCurrentDownloadId(downloadID)
+                    this._continueDownload();
+                }else{
+                    this.downloadM3U8File(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError)
+                }
             }
+        }catch (e) {
+            onError && onError(e);
         }
     }
     // 继续下载
     _continueDownload = async ()=>{
-        let isDownloaded = this._isDownloaded();
-        if(isDownloaded){
-            this._getOnEndDownload && this._getOnEndDownload()(true)
-            return;
-        }
-        let data = await AsyncStorage.getItem(this._getTsUrlsStorageKey());
-        let objData = JSON.parse(data);
-        let downloadSegment = this._getSegment();
-        let downloadCount = objData.length;
-        let segmentCount = Math.floor(downloadCount/downloadSegment);
-        let downloadedCount = 0;
-        for(let i = 1;i <= downloadSegment;i++){
-            let currentSegmentStorageKey = this._getCurrentSegmentStorageKey(i);
-            let startIndex_endIndex =await AsyncStorage.getItem(currentSegmentStorageKey);
-            let split = startIndex_endIndex.split('_');
-            let startIndex = parseInt(split[0]);
-            let endIndex = parseInt(split[1]);
-            let curSegmentDownloadedCount = startIndex - segmentCount*(i-1);
-            downloadedCount+=curSegmentDownloadedCount;
-            this._setDownloadedCount(downloadedCount);
-            this._downloadTsFile(objData,startIndex,endIndex,i)
+        try{
+            this._getOnStartDownload() && this._getOnStartDownload()(true);
+            let isDownloaded = this._isDownloaded();
+            if(isDownloaded){
+                this._getOnEndDownload() && this._getOnEndDownload()(true)
+                return;
+            }
+            let data = await AsyncStorage.getItem(this._getTsUrlsStorageKey());
+            let objData = JSON.parse(data);
+            let downloadSegment = this._getSegment();
+            let downloadCount = objData.length;
+            let segmentCount = Math.floor(downloadCount/downloadSegment);
+            let downloadedCount = 0;
+            for(let i = 1;i <= downloadSegment;i++){
+                let currentSegmentStorageKey = this._getCurrentSegmentStorageKey(i);
+                let startIndex= segmentCount*(i-1);;
+                let endIndex = segmentCount*i;
+                if(i === downloadSegment){
+                    endIndex = downloadedCount;
+                }
+                let startIndex_endIndex =await AsyncStorage.getItem(currentSegmentStorageKey);
+                if(startIndex_endIndex){
+                    let split = startIndex_endIndex.split('_');
+                    startIndex = parseInt(split[0]);
+                    endIndex = parseInt(split[1]);
+                }
+                console.warn("startIndex:"+startIndex+" endIndex:"+endIndex);
+                let curSegmentDownloadedCount = startIndex - segmentCount*(i-1);
+                downloadedCount+=curSegmentDownloadedCount;
+                this._setDownloadedCount(downloadedCount);
+                this._downloadTsFile(objData,startIndex,endIndex,i)
+            }
+        }catch (e) {
+            this._getOnError() && this._getOnError()(e);
         }
     }
 
@@ -190,7 +212,7 @@ export default class M3U8DownloaderConfig {
             let downloadIdFilePath = this._getDownloadIdFilePath();
             writeFile(downloadIdFilePath,randomId+"");
         }catch (e) {
-            
+            this._getOnError() && this._getOnError()(error)
         }
     }
 
@@ -204,26 +226,34 @@ export default class M3U8DownloaderConfig {
     }
 
 
-    downloadM3U8File = (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress,onError)=>{
+    downloadM3U8File =async (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress,onError)=>{
+        let isexists = await exists(savePath);
+        if(isexists){
+            await  unlink(savePath)
+        }
         this._init(savePath, fileName, segment, onStartDownload, onEndDownload, onProgress,onError);
         let isDownloaded = this._isDownloaded();
         if(isDownloaded){
-            this._getOnEndDownload && this._getOnEndDownload()(true)
+            this._getOnEndDownload() && this._getOnEndDownload()(true)
             return;
         }
         this._readyDownload(m3u8Url);
+
     }
 
     _readyDownload = (m3u8Url)=>{
         if(this._isM3U8Url(m3u8Url)){
             this._getM3U8Data(m3u8Url).then(text =>{
-                // text = '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-TARGETDURATION:15\n#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"\n#EXTINF:15,\nhttp://media.example.com/fileSequence52-1.ts\n#EXTINF:15,\nhttp://media.example.com/fileSequence52-2.ts\n#EXTINF:15,\nhttp://media.example.com/fileSequence52-3.ts\n#EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=53"\n#EXTINF:15,\nhttp://media.example.com/fileSequence52-3.ts\n#EXT-X-ENDLIST '
+                if(this._onPause){
+                    return;
+                }
                 let objData = this._parseM3U8Data(text);
                 if(objData){
                     this._getM3U8Urls(objData,m3u8Url).then(data=>{
+
                         let urls = data.urls;
                         if(data.belongArray === 'segments'){
-                            this._getOnStartDownload && this._getOnStartDownload()(true)
+                            this._getOnStartDownload() && this._getOnStartDownload()(true)
                             // 创建文件目录
                             let savePath = this._getSavePath();
                             this._mkdirs(savePath,urls.length).then(() => {
@@ -234,6 +264,10 @@ export default class M3U8DownloaderConfig {
                                 // 存储可用的m3u8文件
                                 let availableUrlPrefix =data.availableUrl;
                                 this._saveAvailableM3U8(objData,savePath,availableUrlPrefix,this._getFileName());
+
+                                if(this._onPause){
+                                    return;
+                                }
                                 // 开始下载
                                 this._startDownload(urls, this._getSegment());
                             })
@@ -243,7 +277,7 @@ export default class M3U8DownloaderConfig {
                         let downloadIndex = Math.floor(urls.length/2); // 下载中最中间的m3u8视频
                         this._readyDownload(urls[downloadIndex]);
                     }).catch((error)=>{
-                        this._getOnError && this._getOnError()(error)
+                        this._getOnError() && this._getOnError()(error)
                     })
                 }
             }).catch(error =>{
@@ -280,12 +314,12 @@ export default class M3U8DownloaderConfig {
             axios({
                 method: 'get',
                 url: url,
-                timeout: 10000,
+                timeout: this.timeout,
             }).then(response => {
                 let text = response.data;
                 resolve(text);
             }).catch(error => {
-                reject(error)
+                this._getOnError() && this._getOnError()(error)
             })
         });
     }
@@ -378,7 +412,7 @@ export default class M3U8DownloaderConfig {
             }
 
         } catch (e) {
-            return e;
+            this._getOnError() && this._getOnError()(error)
         }
 
     }
@@ -441,7 +475,7 @@ export default class M3U8DownloaderConfig {
             })
             return {availableUrl:prefixUri,urls:newArrUrl,belongArray:belongArray};
         }catch (e) {
-            return undefined;
+            this._getOnError() && this._getOnError()(error)
         }
 
     }
@@ -459,7 +493,7 @@ export default class M3U8DownloaderConfig {
             parser.end();
             return parser.manifest;
         }catch (e) {
-            return undefined;
+            this._getOnError() && this._getOnError()(error)
         }
     }
 
@@ -487,15 +521,17 @@ export default class M3U8DownloaderConfig {
                     let isExist = await exists(path);
                     // console.warn("isExist:"+isExist+"  path:"+path)
                     if (!isExist) {
-                        allPromise.push(mkdir(path));
+                        // allPromise.push(mkdir(path));
+                        await mkdir(path);
                     }
                 } catch (e) {
-
+                    this._getOnError() && this._getOnError()(error)
                 }
 
             }
         }
-        return Promise.all(allPromise)
+        return true;
+        // return Promise.all(allPromise)
 
     }
     /**
@@ -540,7 +576,14 @@ export default class M3U8DownloaderConfig {
      * endIndex：下载到endIndex位置结束递归
      * */
     _downloadTsFile =async (data, startIndex, endIndex,belongSegment) => {
-
+        // 暂停下载
+        if( this._onPause){
+            return;
+        }
+        // 取消下载
+        if(this._onCancel ){
+            return;
+        }
         // console.warn("curIndex:"+startIndex);
         let savePath = this._getSavePath();
         let tsFilePath = this._tsFilePath(startIndex,data[startIndex],savePath)
@@ -606,10 +649,10 @@ export default class M3U8DownloaderConfig {
                 let isDownloaded = this._isDownloaded();
                 console.warn('isDownloaded:'+isDownloaded)
                 if(isDownloaded){
-                    this._getOnEndDownload && this._getOnEndDownload()(true);
-                    let savePath = this._getSavePath();
-                    let fileName = this._getFileName();
-                    this._M3U8ToMP4(savePath+'/'+fileName+'.m3u8',savePath+'/'+fileName+'.mp4')
+                    this._getOnEndDownload() && this._getOnEndDownload()(true);
+                    // let savePath = this._getSavePath();
+                    // let fileName = this._getFileName();
+                    // this._M3U8ToMP4(savePath+'/'+fileName+'.m3u8',savePath+'/'+fileName+'.mp4')
                 }
                 return;
             }
@@ -629,7 +672,7 @@ export default class M3U8DownloaderConfig {
     _setDownloadProgress = (bytes) =>{
         let downloadedCount = this._getDownloadedCount() + 1;
         this._setDownloadedCount(downloadedCount);
-        this._getOnProgress && this._getOnProgress()({downloadCount:downloadedCount});
+        this._getOnProgress() && this._getOnProgress()({downloadCount:downloadedCount});
     }
 
     _setDownloadedSize = (bytes) =>{
@@ -657,19 +700,10 @@ export default class M3U8DownloaderConfig {
     }
 
     _isDownloaded = ()=>{
+        if(this._getSegment() <= 0){
+            return false;
+        }
         return this._getDownloadedSegment() === this._getSegment();
-    }
-
-    _M3U8ToMP4 = (m3u8FilePath,outputPath)=>{
-        // let command = `-i ${m3u8FilePath} -vcodec mpeg4 ${outputPath}`;
-        let command = `-i ${m3u8FilePath} -vcodec copy -acodec copy ${outputPath}`;
-        this._execute(command);
-    }
-
-    _execute = (command) =>{
-        RNFFmpeg.execute(command," ").then(res => {
-            console.warn("mp4:"+JSON.stringify(res))
-        })
     }
 
 
@@ -700,8 +734,12 @@ export default class M3U8DownloaderConfig {
             if(segments && segments[0].key && segments[0].key.uri){
                 let method = segments[0].key.method;
                 let uri = segments[0].key.uri;
+                let iv = segments[0].key.iv;
                 let newKey = 'key';
                 let key = `#EXT-X-KEY:METHOD=${method},URI="${newKey}"\n`;
+                if(iv){
+                    key =`#EXT-X-KEY:METHOD=${method},URI="${newKey}",IV=${iv}\n`;
+                }
                 saveText = saveText + key;
                 let url = '';
                 if(!uri.startsWith('/')){
@@ -713,7 +751,7 @@ export default class M3U8DownloaderConfig {
                 axios({
                     method:'get',
                     url:url,
-                    timeout:15000,
+                    timeout:this.timeout,
                 }).then(response=>{
                     // console.warn(response);
                     if(response.data){
@@ -723,7 +761,7 @@ export default class M3U8DownloaderConfig {
                     }
 
                 }).catch(error=>{
-
+                    this._getOnError() && this._getOnError()(error)
                 })
             }
             segments.forEach((item,index)=>{
@@ -741,7 +779,7 @@ export default class M3U8DownloaderConfig {
             let filePath = fileDir+'/'+indexName+'.m3u8';
             writeFile(filePath,saveText)
         }catch (e) {
-            this._getOnError && this._getOnError()(e)
+            this._getOnError() && this._getOnError()(error)
         }
 
     }
@@ -772,7 +810,7 @@ export default class M3U8DownloaderConfig {
             axios({
                 method: 'get',
                 url: url,
-                timeout: 15000,
+                timeout: this.timeout,
             }).then(response=>{
                 // console.warn(response)
                 resolve(true)
