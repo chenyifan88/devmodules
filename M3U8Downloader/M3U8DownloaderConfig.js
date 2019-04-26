@@ -509,27 +509,26 @@ export default class M3U8DownloaderConfig {
      */
     _mkdirs = async (savePath,count) => {
         let allPromise = [];
-        if(!savePath.endsWith('/')){
-            savePath = savePath+'/'
-        }
-        for (let i = 0; i < count; i++) {
-            if (i % 100 === 0) {
-                try {
+        try{
+            if(!savePath.endsWith('/')){
+                savePath = savePath+'/'
+            }
+            for (let i = 0; i < count; i++) {
+                if (i % 100 === 0) {
                     let dir = Math.floor(i / 100);
                     dir = dir + '00_' + dir + '99';
                     let path = `${savePath}${dir}`;
                     let isExist = await exists(path);
-                    // console.warn("isExist:"+isExist+"  path:"+path)
                     if (!isExist) {
                         // allPromise.push(mkdir(path));
                         await mkdir(path);
                     }
-                } catch (e) {
-                    this._getOnError() && this._getOnError()(error)
                 }
-
             }
+        }catch (e) {
+            this._getOnError() && this._getOnError()(error)
         }
+
         return true;
         // return Promise.all(allPromise)
 
@@ -548,7 +547,7 @@ export default class M3U8DownloaderConfig {
         return filePath;
     }
 
-    _saveLastDownloadSave = (belongSegment, startIndex, endIndex)=>{
+    _saveLastDownloadIndex = (belongSegment, startIndex, endIndex)=>{
         let saveRandomDataKey = this._getCurrentSegmentStorageKey(belongSegment);
         let saveRandomDataValue =`${startIndex}_${endIndex}`
         AsyncStorage.setItem(saveRandomDataKey,saveRandomDataValue);
@@ -608,7 +607,7 @@ export default class M3U8DownloaderConfig {
         let result = downloadFile(DownloadFileOptions);
         result.promise.then(res => {
             // 下载成功后回调进程给onProgress
-            this._saveLastDownloadSave(belongSegment,startIndex,endIndex);
+            this._saveLastDownloadIndex(belongSegment,startIndex,endIndex);
             // 暂停下载
             if( this._onPause){
                 return;
@@ -642,12 +641,12 @@ export default class M3U8DownloaderConfig {
 
             let nextIndex = startIndex + 1;
             // 结束递归
-            console.warn("startIndex:"+startIndex)
+            // console.warn("startIndex:"+startIndex)
             if (nextIndex >= endIndex) {
                 let downloadedCount = this._getDownloadedSegment()+1;
                 this._setDownloadedSegment(downloadedCount);
                 let isDownloaded = this._isDownloaded();
-                console.warn('isDownloaded:'+isDownloaded)
+                // console.warn('isDownloaded:'+isDownloaded)
                 if(isDownloaded){
                     this._getOnEndDownload() && this._getOnEndDownload()(true);
                     // let savePath = this._getSavePath();
