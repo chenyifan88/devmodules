@@ -41,6 +41,10 @@ export default class M3U8DownloaderConfig {
      * 暂停下载
      */
     onPause = ()=>{
+        if(this._onCancel){
+            this._getOnError()&&this._getOnError()("文件已经取消下载");
+            return
+        }
         if(!this._onPause){
             this._setBool(false,true,false,false)
         }
@@ -52,12 +56,20 @@ export default class M3U8DownloaderConfig {
      * @returns {boolean}
      */
     onCancel = (savePath) =>{
-        if(!this._onCancel){
-            this._setBool(false,false,false,true);
-            unlink(savePath).then().catch();
-            return true;
+        let result = false;
+        try{
+            if(!this._onCancel){
+                this._setBool(false,false,false,true);
+                unlink(savePath).then().catch();
+                this._setDownloadCount(0);
+                this._setDownloadedCount(0);
+                this._setSegment(0);
+                result =  true;
+            }
+        }catch (e) {
+            return false;
         }
-        return false;
+        return result;
 
     }
     /**
@@ -350,7 +362,8 @@ export default class M3U8DownloaderConfig {
 
                             return;
                         }
-                        let downloadIndex = Math.floor(urls.length/2); // 下载中最中间的m3u8视频
+                        // let downloadIndex = Math.floor(urls.length/2); // 下载中最中间的m3u8视频
+                        let downloadIndex = Math.floor(0); // 下载中最中间的m3u8视频
                         this._readyDownload(urls[downloadIndex]);
                     }).catch((error)=>{
                         this._getOnError() && this._getOnError()(error)
@@ -764,7 +777,7 @@ export default class M3U8DownloaderConfig {
     _setDownloadProgress = (bytes) =>{
         let downloadedCount = this._getDownloadedCount() + 1;
         this._setDownloadedCount(downloadedCount);
-        this._getOnProgress() && this._getOnProgress()({currentDownloadCount:downloadedCount,downloadCount:downloadedCount});
+        this._getOnProgress() && this._getOnProgress()({currentDownloadCount:downloadedCount,downloadCount:this._getDownloadCount()});
     }
     /**
      * 已经下载的大小
@@ -844,40 +857,15 @@ export default class M3U8DownloaderConfig {
             let targetDuration =   data.targetDuration;
             let saveText = `#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-TARGETDURATION:${targetDuration}\n`;
             let segments = data.segments;
-            if(segments && segments[0].key && segments[0].key.uri){
-                let method = segments[0].key.method;
-                let uri = segments[0].key.uri;
-                let iv = segments[0].key.iv;
-                let newKey = 'key';
-                let key = `#EXT-X-KEY:METHOD=${method},URI="${newKey}"\n`;
-                if(iv){
-                    key =`#EXT-X-KEY:METHOD=${method},URI="${newKey}",IV=${iv}\n`;
-                }
-                saveText = saveText + key;
-                let url = '';
-                if(!uri.startsWith('/')){
-                    uri = '/'+uri;
-                    url = availableUrlPrefix + uri;
-                }else{
-                    url = uri;
-                }
-                axios({
-                    method:'get',
-                    url:url,
-                    timeout:this._timeout,
-                }).then(response=>{
-                    // console.warn(response);
-                    if(response.data){
-                        let data = response.data;
-                        let keyFilePath = fileDir+newKey;
-                        writeFile(keyFilePath,data);
-                    }
 
-                }).catch(error=>{
-                    this._getOnError() && this._getOnError()(error)
-                })
-            }
             segments.forEach((item,index)=>{
+                if(item.key){
+                    if(index === 0){
+                        saveText = this._addM3U8Key(segments[0],saveText,availableUrlPrefix,fileDir);
+                    }else if(item.key.uri && item.key.uri !== segments[index-1].key.uri){
+                        saveText = this._addM3U8Key(segments[0],saveText,availableUrlPrefix,fileDir);
+                    }
+                }
                 let url = item.uri;
                 let duration = item.duration;
                 let dir = Math.floor(index / 100);
@@ -896,6 +884,58 @@ export default class M3U8DownloaderConfig {
         }
 
     }
+    // 给存储的m3u8文件加key
+    _addM3U8Key = (data,currentText,availableUrlPrefix,fileDir)=>{
+        try{
+            if(data.key && data.key.method && data.key.uri){
+                let method = data.key.method;
+                let uri = data.key.uri;
+                let iv = data.key.iv;
+                let url = '';
+                let newKey = '';
+                if(uri.startsWith('http')){
+                    url = uri;
+                    let split = uri.split('/');
+                    newKey = split[split.length - 1]+split[split.length - 2];
+                } else{
+                    newKey = uri;
+                    if(!uri.startsWith('/')){
+                        uri = '/'+uri;
+                    }
+                    url = availableUrlPrefix + uri;
+                }
+
+                let key = `#EXT-X-KEY:METHOD=${method},URI="${newKey}"\n`;
+                if(iv){
+                    key =`#EXT-X-KEY:METHOD=${method},URI="${newKey}",IV=${iv}\n`;
+                }
+                currentText = currentText + key;
+
+                axios({
+                    method:'get',
+                    url:url,
+                    timeout:this._timeout,
+                }).then(response=>{
+                    // console.warn(response);
+                    if(response.data){
+                        let data = response.data;
+                        if(!newKey.startsWith('/')){
+                            newKey = '/'+newKey;
+                        }
+                        let keyFilePath = fileDir+newKey;
+                        writeFile(keyFilePath,data);
+                    }
+
+                }).catch(error=>{
+                    this._getOnError() && this._getOnError()(error)
+                })
+            }
+        }catch (e) {
+            return currentText;
+        }
+        return currentText;
+    }
+
     /**
      * 设置ts分片的名字
      * @param url

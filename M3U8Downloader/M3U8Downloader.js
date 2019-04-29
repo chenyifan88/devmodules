@@ -11,11 +11,6 @@ import M3U8DownloaderConfig from "./M3U8DownloaderConfig";
 // ffmpeg -allowed_extensions ALL -protocol_whitelist "file,http,crypto,tcp" -i index.m3u8 -c copy out.mp4
 
 export default class M3U8Downloader {
-
-    constructor() {
-
-    }
-
     /**
      * 下载
      * @param downloadConfig {
@@ -57,7 +52,7 @@ export default class M3U8Downloader {
             segment = 3
         }
         let last = filePath.lastIndexOf('/');
-        let savePath = filePath.substring(0,last);
+        let savePath = filePath.substring(0,last)+"/TmpTs";
         let fileName = filePath.substring(last+1,filePath.length);
         let split = fileName.split('.');
         fileName = split[0];
@@ -87,13 +82,8 @@ export default class M3U8Downloader {
      */
     cancel = () =>{
         if(this._savePath){
-            if(typeof callback === 'function'){
-                let result = this._downloadConfig.onCancel(this._savePath);
-                return result;
-            }else{
-                return false;
-            }
-
+            let result = this._downloadConfig && this._downloadConfig.onCancel(this._savePath);
+            return result;
         }
 
     }
