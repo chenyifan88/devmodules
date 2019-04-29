@@ -19,8 +19,7 @@ import M3U8Downloader from './M3U8Downloader'
 // const m3u8Uri = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8'
 // const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
 // const m3u8Uri = 'http://play.tiansex.net:2095/avid57982102c3d5e/avid57982102c3d5e.m3u8?md5=15OPrZBvhAsGiNEfgRR5jw&expires=1556248514'
-// const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
-const m3u8Uri = 'http://videocdn.dlyilian.com:8091/20190331/VO6JYDW120/1000kb/hls/index.m3u8'
+const m3u8Uri = 'http://vfile1.grtn.cn/2018/1542/0254/3368/154202543368.ssm/154202543368.m3u8'
 
 import FFmpeg from "./FFmpeg";
 
