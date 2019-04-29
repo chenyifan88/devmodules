@@ -19,7 +19,7 @@ export default class FFmpeg {
      * @param mp4OutputPath
      * @param callback
      */
-    static m3u8ToMP4(m3u8FilePath,mp4OutputPath,callback){
+    static m3u8CompositeMP4(m3u8FilePath, mp4OutputPath, callback){
         let command = `-i ${m3u8FilePath} -vcodec copy -acodec copy ${mp4OutputPath}`;
         RNFFmpeg.execute(command," ").then(result=>{
             callback(result)
@@ -86,7 +86,14 @@ export default class FFmpeg {
      * @param mp4OutputPath
      */
     static textCompositeMP4(mp4InputPath,text,fontPath,fontColor,fontSize,x,y,mp4OutputPath,callback){
+        // let {mp4InputPath,text,fontPath,fontColor,fontSize,x,y,mp4OutputPath,callback}=config
         let fontFile = fontPath;
+        if(x.indexOf('%') !== -1){
+            x = w*x;
+        }
+        if(y.indexOf('%') !== -1){
+            y = h*y;
+        }
         let command = `-i ${mp4InputPath} -vf drawtext='fontfile=${fontFile}:fontcolor=${fontColor}:fontsize=${fontSize}:x=${x}:y=${y}:text=${text}' ${mp4OutputPath}`
         console.warn("command:_"+command);
         RNFFmpeg.execute(command," ").then(result=>{

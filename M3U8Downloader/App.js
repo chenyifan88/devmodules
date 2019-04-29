@@ -11,6 +11,7 @@ import {
     Platform,
     Button,
     SafeAreaView,
+    View,
 } from 'react-native';
 import RNFS from 'react-native-fs'
 import M3U8Downloader from './M3U8Downloader'
@@ -31,7 +32,7 @@ export default class App extends Component<Props> {
         super(props);
 
     }
-    
+
     render() {
         return (
             <SafeAreaView style={{flex: 1, backgroundColor: '#cc4'}}>
@@ -91,7 +92,7 @@ export default class App extends Component<Props> {
                     return;
 
                     // this.downloadM3U8File(savePath,m3u8Uri2,3)
-
+                    // 设置下载
                     let downloadConfig = {
                         filePath: m3u8FilePath,
                         m3u8Url: m3u8Uri,
@@ -104,7 +105,7 @@ export default class App extends Component<Props> {
                         },
                         onEndDownload: result => {
                             if(result){
-                                FFmpeg.m3u8ToMP4(m3u8FilePath,outputPath,result=>{
+                                FFmpeg.m3u8CompositeMP4(m3u8FilePath,outputPath, result=>{
                                     console.warn(result)
                                 })
                             }
@@ -129,6 +130,9 @@ export default class App extends Component<Props> {
                     console.warn('parser')
                     this.download&&this.download.pause();
                 }}/>
+                <View style={{width:100,height:100,backgroundColor:'gray',padding:20}}>
+                    <View style={{width:40,height:40,backgroundColor:'red'}}></View>
+                </View>
             </SafeAreaView>
         );
     }

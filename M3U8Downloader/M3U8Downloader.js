@@ -17,19 +17,21 @@ export default class M3U8Downloader {
     }
 
     /**
-     *
+     * 下载
      * @param downloadConfig {
      *                          m3u8Url:string,
      *                          filePath:string,
-     *                          segment?:number,
      *                          onStartReady?:fun,
      *                          onStartDownload?:fun,
      *                          onEndDownload?:fun,
      *                          onError?:fun,
      *                          onProgress?:fun,
      *                          resume?:bool,
+     *                          segment?:number,
      *
      *                        }
+     *
+     * 注：暂停后，可通过设置resume = true，然后继续下载
      */
 
     downloadM3U8File = downloadConfig =>{
@@ -64,12 +66,14 @@ export default class M3U8Downloader {
             this._downloadConfig  = new M3U8DownloaderConfig();
         }
         if(typeof resume === 'boolean' && resume){
-            this._downloadConfig.resume(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
+            this._downloadConfig.onResume(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
             return;
         }
         this._downloadConfig.downloadM3U8File(savePath,m3u8Url,fileName,segment,onStartDownload,onEndDownload,onProgress,onError);
     }
-
+    /**
+     * 暂停下载
+     */
     pause = ()=>{
         this._downloadConfig.onPause();
     }
@@ -91,15 +95,6 @@ export default class M3U8Downloader {
             }
 
         }
-
-    }
-
-
-    _setBool = (start,pause,resume,cancel)=>{
-        this._onStart = start;
-        this._onPause = pause;
-        this._onResume = resume;
-        this._onCancel = cancel;
 
     }
 

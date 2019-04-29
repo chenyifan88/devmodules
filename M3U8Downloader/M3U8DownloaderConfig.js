@@ -23,15 +23,9 @@ import {
     unlink,
 } from 'react-native-fs';
 
-// 对加密ts合成mp4
-// ffmpeg -allowed_extensions ALL -protocol_whitelist "file,http,crypto,tcp" -i index.m3u8 -c copy out.mp4
-
-// 字幕合成
-//-i my.mkv -vf subtitles=my.ass my2.mkv
 export default class M3U8DownloaderConfig {
 
     constructor() {
-        // this._init();
         this._segment = 0; // 分几段下载
         this._downloadedSegment = 0; // 完成几个分段下载
         // 注： 这里的下载是指下一个ts分片的下载
@@ -40,15 +34,23 @@ export default class M3U8DownloaderConfig {
         this._onResume = false; // 恢复下载，针对非人为中断下载
         this._onCancel =false; // 取消下载，会清空所有下载文件
 
-        this.timeout = 30000;
+        this._timeout = 30000;
     }
 
+    /**
+     * 暂停下载
+     */
     onPause = ()=>{
         if(!this._onPause){
             this._setBool(false,true,false,false)
         }
 
     }
+    /**
+     * 取消下载，会清空下载的目录
+     * @param savePath
+     * @returns {boolean}
+     */
     onCancel = (savePath) =>{
         if(!this._onCancel){
             this._setBool(false,false,false,true);
@@ -58,14 +60,29 @@ export default class M3U8DownloaderConfig {
         return false;
 
     }
+    /**
+     * 暂停过后，点击开始下载，不适合用于异常中断或者程序退出 ----------- 废弃 --------
+     * @returns {Promise<void>}
+     */
     onStart =async () =>{
         if(!this._onStart){
             this._setBool(true,false,false,false)
             this._continueDownload();
         }
     }
-
-    resume = async (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress, onError) =>{
+    /**
+     * 恢复下载， 点击onPause后可以通过它恢复下载，获取下载异常中断，也可通过它恢复
+     * @param savePath
+     * @param m3u8Url
+     * @param fileName
+     * @param segment
+     * @param onStartDownload
+     * @param onEndDownload
+     * @param onProgress
+     * @param onError
+     * @returns {Promise<void>}
+     */
+    onResume = async (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress, onError) =>{
         try{
             if(!this._onResume){
                 this._setBool(false,false,true,false)
@@ -87,6 +104,11 @@ export default class M3U8DownloaderConfig {
         }
     }
     // 继续下载
+    /**
+     * 继续下载
+     * @returns {Promise<void>}
+     * @private
+     */
     _continueDownload = async ()=>{
         try{
             this._getOnStartDownload() && this._getOnStartDownload()(true);
@@ -99,6 +121,7 @@ export default class M3U8DownloaderConfig {
             let objData = JSON.parse(data);
             let downloadSegment = this._getSegment();
             let downloadCount = objData.length;
+            this._setDownloadCount(downloadCount);
             let segmentCount = Math.floor(downloadCount/downloadSegment);
             let downloadedCount = 0;
             for(let i = 1;i <= downloadSegment;i++){
@@ -124,7 +147,14 @@ export default class M3U8DownloaderConfig {
             this._getOnError() && this._getOnError()(e);
         }
     }
-
+    /**
+     *
+     * @param start
+     * @param pause
+     * @param resume
+     * @param cancel
+     * @private
+     */
     _setBool = (start,pause,resume,cancel)=>{
         this._onStart = start;
         this._onPause = pause;
@@ -132,7 +162,11 @@ export default class M3U8DownloaderConfig {
         this._onCancel = cancel;
 
     }
-
+    /**
+     * 设置数据的保存路径
+     * @param savePath
+     * @private
+     */
     _setSavePath = savePath =>{
         this._savePath = savePath;
     }
@@ -140,7 +174,11 @@ export default class M3U8DownloaderConfig {
     _getSavePath = () => {
         return this._savePath;
     }
-
+    /**
+     * 设置开始下载的回调
+     * @param onStartDownload
+     * @private
+     */
     _setOnStartDownload = onStartDownload=>{
         this._onStartDownload = onStartDownload;
     }
@@ -152,7 +190,11 @@ export default class M3U8DownloaderConfig {
         return this._onStartDownload;
     }
 
-    // 设置下载进度的索引
+    /**
+     * 设置下载进度的回调
+     * @param onProgress
+     * @private
+     */
     _setOnProgress = onProgress =>{
         this._onProgress = onProgress;
     }
@@ -164,6 +206,11 @@ export default class M3U8DownloaderConfig {
         return this._onProgress;
     }
     // 设置错误的索引
+    /**
+     * 设置下载错误的回调
+     * @param onError
+     * @private
+     */
     _setOnError= onError =>{
         this._onError = onError;
     }
@@ -175,6 +222,11 @@ export default class M3U8DownloaderConfig {
         return this._onError;
     }
     // 设置下载完成索引
+    /**
+     * 设置下载完成的回调
+     * @param onEndDownload
+     * @private
+     */
     _setOnEndDownload = onEndDownload =>{
         this._onEndDownload = onEndDownload;
     }
@@ -185,7 +237,11 @@ export default class M3U8DownloaderConfig {
         }
         return this._onEndDownload;
     }
-
+    /**
+     * 设置下载的文件名
+     * @param fileName
+     * @private
+     */
     _setFileName = fileName =>{
         this._fileName = fileName;
     }
@@ -200,18 +256,23 @@ export default class M3U8DownloaderConfig {
      * @private
      */
     _setSegment = segment =>{
+        if(!segment || segment >5 || segment < 0 ) segment =3;
         this._segment = segment;
     }
     _getSegment = ()=>{
         return this._segment;
     }
-
+    /**
+     * 设置当前下载的id
+     * @param randomId
+     * @private
+     */
     _setCurrentDownloadId = randomId =>{
         try{
             this._randomId = randomId;
             let downloadIdFilePath = this._getDownloadIdFilePath();
             writeFile(downloadIdFilePath,randomId+"");
-        }catch (e) {
+        }catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
     }
@@ -224,7 +285,18 @@ export default class M3U8DownloaderConfig {
     _getCurrentDownloadId = ()=>{
         return this._randomId;
     }
-
+    /**
+     * 下载
+     * @param savePath
+     * @param m3u8Url
+     * @param fileName
+     * @param segment
+     * @param onStartDownload
+     * @param onEndDownload
+     * @param onProgress
+     * @param onError
+     * @returns {Promise<void>}
+     */
 
     downloadM3U8File =async (savePath, m3u8Url, fileName, segment, onStartDownload, onEndDownload, onProgress,onError)=>{
         let isexists = await exists(savePath);
@@ -240,7 +312,11 @@ export default class M3U8DownloaderConfig {
         this._readyDownload(m3u8Url);
 
     }
-
+    /**
+     * 准备下载，此阶段进行m3u8的数据解析，获取ts的url集合，然后在进行下载ts文件
+     * @param m3u8Url
+     * @private
+     */
     _readyDownload = (m3u8Url)=>{
         if(this._isM3U8Url(m3u8Url)){
             this._getM3U8Data(m3u8Url).then(text =>{
@@ -269,7 +345,7 @@ export default class M3U8DownloaderConfig {
                                     return;
                                 }
                                 // 开始下载
-                                this._startDownload(urls, this._getSegment());
+                                this._startDownloadTs(urls, this._getSegment());
                             })
 
                             return;
@@ -314,7 +390,7 @@ export default class M3U8DownloaderConfig {
             axios({
                 method: 'get',
                 url: url,
-                timeout: this.timeout,
+                timeout: this._timeout,
             }).then(response => {
                 let text = response.data;
                 resolve(text);
@@ -411,7 +487,7 @@ export default class M3U8DownloaderConfig {
 
             }
 
-        } catch (e) {
+        } catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
 
@@ -474,7 +550,7 @@ export default class M3U8DownloaderConfig {
                 newArrUrl.push(uri)
             })
             return {availableUrl:prefixUri,urls:newArrUrl,belongArray:belongArray};
-        }catch (e) {
+        }catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
 
@@ -492,7 +568,7 @@ export default class M3U8DownloaderConfig {
             parser.push(data);
             parser.end();
             return parser.manifest;
-        }catch (e) {
+        }catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
     }
@@ -525,7 +601,7 @@ export default class M3U8DownloaderConfig {
                     }
                 }
             }
-        }catch (e) {
+        }catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
 
@@ -553,15 +629,28 @@ export default class M3U8DownloaderConfig {
         AsyncStorage.setItem(saveRandomDataKey,saveRandomDataValue);
 
     }
-
+    /**
+     * 获取当前分段存储的key
+     * @param currentSegment
+     * @returns {string}
+     * @private
+     */
     _getCurrentSegmentStorageKey = currentSegment =>{
         return this._getCurrentDownloadId()+"_segment_"+currentSegment;
     }
-
+    /**
+     * 获取ts的url集合key
+     * @returns {string}
+     * @private
+     */
     _getTsUrlsStorageKey = () =>{
         return  this._getCurrentDownloadId()+"_urls";
     }
-
+    /**
+     *
+     * @returns {string}
+     * @private
+     */
     _getDownloadProgressKey = ()=>{
         return  this._getCurrentDownloadId()+"_progress";
     }
@@ -667,13 +756,21 @@ export default class M3U8DownloaderConfig {
 
 
     }
-
+    /**
+     * 设置下载进度
+     * @param bytes
+     * @private
+     */
     _setDownloadProgress = (bytes) =>{
         let downloadedCount = this._getDownloadedCount() + 1;
         this._setDownloadedCount(downloadedCount);
-        this._getOnProgress() && this._getOnProgress()({downloadCount:downloadedCount});
+        this._getOnProgress() && this._getOnProgress()({currentDownloadCount:downloadedCount,downloadCount:downloadedCount});
     }
-
+    /**
+     * 已经下载的大小
+     * @param bytes
+     * @private
+     */
     _setDownloadedSize = (bytes) =>{
         this._downloadedSize = bytes;
     }
@@ -684,20 +781,29 @@ export default class M3U8DownloaderConfig {
        return this._downloadedSize;
     }
     // 设置当前完成下载的数量
+    /**
+     * 设置 当前已经完成的下载数量
+     * @param count
+     * @private
+     */
     _setDownloadedCount = count => {
-        if(!this._downloadCount){
-            this._downloadCount = 0;
+        if(!this._downloadedCount){
+            this._downloadedCount = 0;
         }
-        this._downloadCount = count;
+        this._downloadedCount = count;
     }
 
     _getDownloadedCount = () => {
-        if(!this._downloadCount){
-            this._downloadCount = 0;
+        if(!this._downloadedCount){
+            this._downloadedCount = 0;
         }
-        return this._downloadCount;
+        return this._downloadedCount;
     }
-
+    /**
+     * 判断是否下载完成
+     * @returns {boolean}
+     * @private
+     */
     _isDownloaded = ()=>{
         if(this._getSegment() <= 0){
             return false;
@@ -724,7 +830,15 @@ export default class M3U8DownloaderConfig {
         }
         return this._downloadedSegment;
     }
-
+    /**
+     * 保存m3u8文件
+     * @param data
+     * @param fileDir
+     * @param availableUrlPrefix
+     * @param indexName
+     * @returns {Promise<void>}
+     * @private
+     */
     _saveAvailableM3U8 =async (data,fileDir,availableUrlPrefix,indexName)=>{
         try{
             let targetDuration =   data.targetDuration;
@@ -750,7 +864,7 @@ export default class M3U8DownloaderConfig {
                 axios({
                     method:'get',
                     url:url,
-                    timeout:this.timeout,
+                    timeout:this._timeout,
                 }).then(response=>{
                     // console.warn(response);
                     if(response.data){
@@ -777,12 +891,17 @@ export default class M3U8DownloaderConfig {
             // console.warn(saveText)
             let filePath = fileDir+'/'+indexName+'.m3u8';
             writeFile(filePath,saveText)
-        }catch (e) {
+        }catch (error) {
             this._getOnError() && this._getOnError()(error)
         }
 
     }
-
+    /**
+     * 设置ts分片的名字
+     * @param url
+     * @returns {*|string}
+     * @private
+     */
     _tsFileName = url =>{
         let split = url.split('/');
         let last = split[split.length - 1];
@@ -809,7 +928,7 @@ export default class M3U8DownloaderConfig {
             axios({
                 method: 'get',
                 url: url,
-                timeout: this.timeout,
+                timeout: this._timeout,
             }).then(response=>{
                 // console.warn(response)
                 resolve(true)
@@ -820,6 +939,25 @@ export default class M3U8DownloaderConfig {
 
     }
 
+    /**
+     * 设置总的下载个数
+     * @param downloadCount
+     * @private
+     */
+    _setDownloadCount = downloadCount =>{
+        this._downloadCount = downloadCount;
+    }
+    /**
+     * 获取总的下载个数
+     * @returns {*|number}
+     * @private
+     */
+    _getDownloadCount = () =>{
+        if(!this._downloadCount){
+            this._downloadCount = 0;
+        }
+        return this._downloadCount;
+    }
 
     /**
      * 下载Data中的ts数据
@@ -828,10 +966,11 @@ export default class M3U8DownloaderConfig {
      * @private
      */
 
-    _startDownload = (data, segment) => {
+    _startDownloadTs = (data, segment) => {
         // 默认开启三个promise进行下载数据
         let downloadSegment = segment;
         let urlCounts = data.length;
+        this._setDownloadCount(urlCounts);
         // console.warn(urlCounts)
         let segmentCount = Math.floor(data.length / downloadSegment);
         // 当m3u8中的ts分片数小于当前segment
